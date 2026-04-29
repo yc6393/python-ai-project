@@ -1,0 +1,9 @@
+streamlit>=1.35.0
+streamlit-folium>=0.20.0
+folium>=0.16.0
+pandas>=2.0.0
+numpy>=1.26.0
+matplotlib>=3.8.0
+requests>=2.31.0
+thefuzz>=0.22.1
+python-Levenshtein>=0.23.0
