@@ -27,6 +27,17 @@ def _load_venues() -> pd.DataFrame:
         df = pd.read_sql("SELECT * FROM venues", conn)
         conn.close()
         if not df.empty:
+            df = df.rename(columns={
+                "avg_calories_100g": "avg_cal",
+                "avg_fat_100g":      "avg_fat",
+                "avg_protein_100g":  "avg_protein",
+                "avg_carbs_100g":    "avg_carbs",
+                "common_nutriscore": "nutriscore",
+            })
+            if "address" not in df.columns:
+                num    = df.get("addr_number",  pd.Series("", index=df.index)).fillna("")
+                street = df.get("addr_street",  pd.Series("", index=df.index)).fillna("")
+                df["address"] = (num.astype(str) + " " + street.astype(str)).str.strip()
             return df.reset_index(drop=True)
     except Exception:
         pass
