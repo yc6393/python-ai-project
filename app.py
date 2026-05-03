@@ -317,7 +317,7 @@ def render_card(row):
     cal_s = f"{int(cal)} kcal/100g" if pd.notna(cal) else ""
     addr  = row.get("address") or row.get("addr") or ""
     rc    = row.get("rating_count")
-    rc_s  = f"({int(rc):,} reviews)" if rc else ""
+    rc_s  = f"({int(rc):,} reviews)" if pd.notna(rc) and rc else ""
     sent  = row.get("sentiment_label")
     sent_html = ""
     if sent:
@@ -628,7 +628,7 @@ with tab3:
             ax.scatter(sdf["pn"] + jit, sdf["google_rating"],
                        c=sc2, alpha=0.72, s=55, edgecolors="white", lw=0.8)
             ax.set_xticks([1, 2, 3, 4])
-            ax.set_xticklabels(["$", "$$", "$$$", "$$$$"], fontsize=12)
+            ax.set_xticklabels([r"$\$$", r"$\$\$$", r"$\$\$\$$", r"$\$\$\$\$$"], fontsize=12)
             ax.set_ylim(2.5, 5.2)
         ax.set_title("💰 Rating vs Price Level", fontweight="bold", color="#1a1a2e")
         ax.set_xlabel("Price Level"); ax.set_ylabel("Google Rating")
