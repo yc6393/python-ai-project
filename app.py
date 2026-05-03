@@ -214,12 +214,30 @@ def load_data():
         conn = sqlite3.connect(DB_PATH)
         df = pd.read_sql("SELECT * FROM venues", conn)
         conn.close()
+
+        # Normalise column names from pipeline schema to UI schema
+        df = df.rename(columns={
+            "avg_calories_100g": "avg_cal",
+            "avg_fat_100g":      "avg_fat",
+            "avg_protein_100g":  "avg_protein",
+            "avg_carbs_100g":    "avg_carbs",
+            "common_nutriscore": "nutriscore",
+        })
+
+        # Build a single address string from street parts
+        if "address" not in df.columns:
+            num    = df.get("addr_number",  pd.Series("", index=df.index)).fillna("")
+            street = df.get("addr_street",  pd.Series("", index=df.index)).fillna("")
+            df["address"] = (num.astype(str) + " " + street.astype(str)).str.strip()
+
         df["google_rating"] = pd.to_numeric(df.get("google_rating"), errors="coerce")
-        df["avg_cal"]       = pd.to_numeric(df.get("avg_cal"), errors="coerce")
+        df["avg_cal"]       = pd.to_numeric(df.get("avg_cal"),       errors="coerce")
+
         for c in ["price_level", "cuisine_key", "address", "nutriscore",
                   "sentiment_label", "avg_fat", "avg_protein", "avg_carbs"]:
             if c not in df.columns:
                 df[c] = None
+
         return df, "live"
     except Exception:
         return make_demo(), "demo"
