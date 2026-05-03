@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
+from recommender import get_alternative
+
 # ── Page config ───────────────────────────────────────────────
 st.set_page_config(
     page_title="DishDash",
@@ -187,6 +189,18 @@ section[data-testid="stSidebar"] h2 { color: #ffffff !important; font-size: 18px
 
 /* Empty state */
 .dd-empty { text-align: center; color: #bbb; padding: 48px 0; font-size: 15px; }
+
+/* Tabs — always show icon + label text, never truncate */
+.stTabs [data-baseweb="tab-list"] { gap: 4px; }
+.stTabs [data-baseweb="tab"] {
+    white-space: nowrap;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #000000 !important;
+}
+.stTabs [data-baseweb="tab"] p { display: inline !important; color: #000000 !important; }
+.stTabs [data-baseweb="tab"] * { color: #000000 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -395,7 +409,13 @@ st.markdown(f"""
 
 
 # ── Tabs ──────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs(["🔍 Search", "🗺️ Map", "📊 Analytics", "🤖 Recommender"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🔍 Search",
+    "🗺️ Map",
+    "📊 Analytics",
+    "🔮 Recom - Nat Lang",
+    "🎇 Recom - N Neighbor",
+])
 
 
 # ══════════════════════════════════════════════════════════════
@@ -605,7 +625,7 @@ with tab3:
 # TAB 4 — Natural-Language Recommender
 # ══════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown('<div class="dd-section">🤖 Natural-Language Recommender</div>',
+    st.markdown('<div class="dd-section">Recommender - Natural Language</div>',
                 unsafe_allow_html=True)
     st.caption("Describe what you want in plain English and get personalised picks from the DishDash database.")
 
@@ -687,3 +707,77 @@ with tab4:
                     f'</div></div>',
                     unsafe_allow_html=True,
                 )
+
+
+# ══════════════════════════════════════════════════════════════
+# TAB 5 — Nearest-Neighbour Recommender
+# ══════════════════════════════════════════════════════════════
+with tab5:
+    st.markdown('<div class="dd-section">Recommender - Nearest Neighbor</div>',
+                unsafe_allow_html=True)
+
+    st.markdown("""<div style="font-family:monospace;color:#000000;white-space:pre;background:#f0f2f6;padding:16px;border-radius:8px;font-size:13px;line-height:1.6;">Methodology
+-----------
+Each venue is represented as a point in a 6-dimensional feature space. 
+Continuous features (rating, price, nutri-score) are min-max normalised to
+[0, 1] using fixed semantic scales so dimensions are comparable regardless
+of their raw ranges.  Geo distance is the haversine miles from the query
+restaurant to each candidate, also normalised to [0, 1] relative to the
+dataset spread.  Cuisine is a binary 0/1 flag (same / different).
+Sentiment is mapped from (label, confidence) to a [0, 1] scalar.
+The best match is the venue minimising the weighted Euclidean distance
+The query restaurant itself is excluded from the result.</div>""", unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    restaurant_names = sorted(df["name"].dropna().unique().tolist())
+    selected = st.selectbox("Choose a restaurant", ["— select —"] + restaurant_names)
+
+    if selected != "— select —":
+        alt = get_alternative(selected)
+
+        if alt is None:
+            st.warning(f"Could not find a match for '{selected}'.")
+        else:
+            st.markdown(f"**Nearest neighbour for:** {selected}")
+            st.markdown("")
+
+            ns      = str(alt.get("nutriscore") or "?").upper()
+            ns_bg   = NS_COLOR.get(ns.lower(), "#aaa")
+            r       = alt.get("rating")
+            r_str   = f"{r:.1f}" if r is not None and str(r) != "nan" else "—"
+            stars   = ("★" * int(round(r)) + "☆" * (5 - int(round(r)))) if r and str(r) != "nan" else ""
+            price   = alt.get("price", "")
+            cuisine = str(alt.get("cuisine", "")).replace("_", " ").title()
+            sent    = alt.get("sentiment", "")
+            addr    = alt.get("address", "")
+            score   = alt.get("distance_score")
+
+            sent_html = ""
+            if sent:
+                cls  = "pos" if sent == "POSITIVE" else "neg"
+                icon = "😊" if sent == "POSITIVE" else "😞"
+                sent_html = f'<span class="dd-sentiment-{cls}">{icon} {sent.title()}</span>'
+
+            st.markdown(
+                f'<div class="dd-card" style="border-left:5px solid {ns_bg}">'
+                f'<div class="dd-card-left">'
+                f'<div class="dd-card-name">{alt["name"]}</div>'
+                f'<span class="dd-cuisine-tag">{cuisine}</span>'
+                f'<div class="dd-detail" style="margin-top:7px">'
+                f'<span class="dd-ns-badge" style="background:{ns_bg}">{ns}</span>'
+                f'</div>'
+                f'<div class="dd-detail">{sent_html}</div>'
+                f'<div class="dd-detail">{addr}</div>'
+                f'<div class="dd-detail" style="margin-top:8px;font-style:italic;color:#555">'
+                f'Similarity distance: {score} (lower = more similar)'
+                f'</div>'
+                f'</div>'
+                f'<div class="dd-card-right">'
+                f'<div class="dd-rating">{r_str}</div>'
+                f'<div class="dd-stars">{stars}</div>'
+                f'<div class="dd-price">{price}</div>'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
